@@ -1,0 +1,41 @@
+= Field Booker
+
+== Build
+
+. Virtual Environment
++
+Setup a virtual environment if you haven't already:
++
+[source, shell]
+----
+python3 -m venv .venv
+----
+
+Mac/Linux::
++
+[source, shell]
+----
+source .venv/bin/activate
+----
+
+Windows::
++
+[source, shell]
+----
+.venv\Scripts\activate
+----
+
+. Install dependencies
++
+[source, shell]
+----
+pip3 install -r requirements.txt
+----
+
+. Linting and Formatting
++
+Install flake8 and black:
+[source, shell]
+----
+pip3 install flake8 black
+----
