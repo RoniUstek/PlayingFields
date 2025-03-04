@@ -112,7 +112,8 @@ class BookingSoftware:
         self.app.setButton("11asideSelection", "11-aside")
         self.app.stopSubWindow()
 
-        # CANCEL BOOKING
+        # CANCEL BOOKING : this is the page that will allow users to cancel a booking that they have made
+        #                  if they wish to do so
         self.app.startSubWindow("window_CancelBooking")
         self.app.setSize("600x300")
         self.app.setSticky("W")
@@ -124,7 +125,8 @@ class BookingSoftware:
         self.app.setButton("CancelBooking", "Cancel Booking")
         self.app.stopSubWindow()
 
-        # VIEW BOOKING
+        # VIEW BOOKING: this is the page where users will be able to view all their previous and
+        #              upcoming bookings
         self.app.startSubWindow("window_ViewBooking")
         self.app.setSize("600x300")
         self.app.setSticky("W")
@@ -136,7 +138,8 @@ class BookingSoftware:
         self.app.setButton("GetBookingInfo", "View Booking")
         self.app.stopSubWindow()
 
-        # Booking
+        # Booking: this is the page where users will be able to put all the details of the pitch they want to book
+        #          as well as the date and time, allowing them to make a booking
         self.app.startSubWindow("window_Booking")
         self.app.setSize("600x300")
         self.app.setSticky("W")
@@ -172,7 +175,7 @@ class BookingSoftware:
         self.app.setButton("MakeBooking", "Book Pitch")
         self.app.stopSubWindow()
 
-        # BOOKING SUMMARY
+        # BOOKING SUMMARY: this is the page that will display all the booking information
         self.app.startSubWindow("window_BookingSummary")
         self.app.setSize("600x300")
         self.app.setSticky("W")
@@ -214,47 +217,61 @@ class BookingSoftware:
 
     def checkAttempts(self):
         if self.attempts < 3:  # checks if the attempts are less than 3
-            self.app.infoBox("ERROR", "Username or Password is incorrect, " + str(3 - self.attempts) + " attempts remaining")
+            self.app.infoBox("ERROR",
+                             "Username or Password is incorrect, " + str(
+                                 3 - self.attempts) + " attempts remaining")  # displays an error box telling users how many attempts they have remaining
             return False
         else:
-            self.app.infoBox("ERROR", "Too many failed attempts! Locking account.")
+            self.app.infoBox("ERROR", "Too many failed attempts! Locking page.")  # displays an error box telling users the page is being locked
             self.disableWidgets()
             self.updateTime()
             return False
 
     def disableWidgets(self):
-        self.app.disableEntry("UsernameCheck")
-        self.app.disableEntry("PasswordCheck")
-        self.app.disableButton("SignIn")
-        self.app.disableLink("Forgot Password")
-        self.app.disableButton("Sign Up")
+        self.app.disableEntry("UsernameCheck")  # disables the UsernameCheck entry box
+        self.app.disableEntry("PasswordCheck")  # disables the PasswordCheck entry box
+        self.app.disableButton("SignIn")  # disables the SignIn button
+        self.app.disableLink("Forgot Password")  # disables the Forgot Password link
+        self.app.disableButton("Sign Up")  # disables the SignUp button
 
     def enableWidgets(self):
-        self.app.enableEntry("UsernameCheck")
-        self.app.enableEntry("PasswordCheck")
-        self.app.enableButton("SignIn")
-        self.app.enableLink("Forgot Password")
-        self.app.enableButton("Sign Up")
+        self.app.enableEntry("UsernameCheck")  # enables the PasswordCheck entry box
+        self.app.enableEntry("PasswordCheck")  # enables the PasswordCheck entry box
+        self.app.enableButton("SignIn")  # enables the SignIn button
+        self.app.enableLink("Forgot Password")  # enables the Forgot Password link
+        self.app.enableButton("Sign Up")  # enables the SignUp button
 
     def formatTime(self):
-        # Formats seconds into MM:SS format
         minutes = self.seconds // 60
         sec = self.seconds % 60
-        return f"{minutes:02}:{sec:02}"
+        return f"{minutes:02}:{sec:02}"  # Formats seconds into minutes:seconds format
 
     def updateTime(self):
         # Updates the timer countdown every second
         if self.seconds > 0:
             self.seconds -= 1
             self.app.setLabel("timer", self.formatTime() + " left until unlock")
-            self.app.after(1000, self.updateTime)
+            self.app.after(1000, self.updateTime)  # runs the updateTime function after 1000ms
         elif self.seconds == 0:
             self.enableWidgets()
-            self.app.setLabel("timer", "")
-            self.attempts = 0
-            self.seconds = 10
+            self.app.setLabel("timer", "")  # makes the timer invisible to users
+            self.attempts = 0  # resets the attempts
+            self.seconds = 10  # resets the seconds
 
-    # def CreateAnAccountValidation():
+    def CreateAnAccountValidation(self):
+        FirstnameEntered = self.app.getEntry("FirstnameEntry")
+        SurnameEntered = self.app.getEntry("SurnameEntry")
+        UsernameEntered = self.app.getEntry("UsernameEntry")
+        PasswordEntered = self.app.getEntry("PasswordEntry")
+        RepeatPasswordEntered = self.app.getEntry("RepeatPasswordEntry")
+        PhoneNumberEntered = self.app.getEntry("PhoneNumberEntry")
+        MemorableWordEntered = self.app.getEntry("MemorableWordEntered")
+        if type(FirstnameEntered) is None or type(SurnameEntered) is None or type(UsernameEntered) is None or type(PasswordEntered) is None or type(
+                RepeatPasswordEntered) is None or type(MemorableWordEntered) is None: #Checks if fields that are required are empty
+            prin
+
+
+
 
     def buttonPress(self, name):
         if name == "BookPitch1":
@@ -264,6 +281,7 @@ class BookingSoftware:
         # stores the result of a question box in the variable
         CreateAccountConfirmation = self.app.questionBox("Create An Account", "Are you sure you want to create an account?")
         if CreateAccountConfirmation:  # checks if the result was true
+            CreateAccountConfirmation()
             self.app.infoBox("Create An Account",
                              "Your account has been created!")  # displays a pop-up box that says the account has been created
 
