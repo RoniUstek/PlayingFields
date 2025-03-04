@@ -200,15 +200,14 @@ class BookingSoftware:
         self.attempts += 1
         usernameEntered = self.app.getEntry("UsernameCheck")  # stores the username entered
         passwordEntered = self.app.getEntry("PasswordCheck")  # stores the password entered
-        self.cur.execute("SELECT Username FROM tbl_users WHERE Username = ?", (usernameEntered,))  # checks if the username entered is in the database
-        validUsername = self.cur.fetchone()  # stores the first value fetched by the SQL statement
-        self.cur.execute("SELECT Password FROM tbl_users WHERE Password = ?", (passwordEntered,))  # checks if the password entered is in the database
-        validPassword = self.cur.fetchone()  # stores the first value fetched by the SQL statement
+        self.cur.execute("SELECT Username, Password FROM tbl_users WHERE Username = ? AND Password = ?",
+                         (usernameEntered, passwordEntered))  # checks if the username entered is in the database
+        validUser = self.cur.fetchone()  # stores the first value fetched by the SQL statement
 
-        if type(validUsername) is type(None) or type(validPassword) is type(None):  # checks if the username and password entered are empty
+        if type(validUser) is type(None):  # checks if the username and password entered are empty
             return self.checkAttempts()
 
-        if validUsername[0] == usernameEntered and validPassword[0] == passwordEntered:  # checks if the username and password are correct
+        if validUser[0] == usernameEntered and validUser[1] == passwordEntered:  # checks if the username and password are correct
             # checks if the values retrieved from the SQL statement are the same as the users inputs
             self.attempts = 0
             return True
@@ -258,20 +257,75 @@ class BookingSoftware:
             self.attempts = 0  # resets the attempts
             self.seconds = 10  # resets the seconds
 
-    def CreateAnAccountValidation(self):
-        FirstnameEntered = self.app.getEntry("FirstnameEntry")
-        SurnameEntered = self.app.getEntry("SurnameEntry")
-        UsernameEntered = self.app.getEntry("UsernameEntry")
-        PasswordEntered = self.app.getEntry("PasswordEntry")
-        RepeatPasswordEntered = self.app.getEntry("RepeatPasswordEntry")
-        PhoneNumberEntered = self.app.getEntry("PhoneNumberEntry")
-        MemorableWordEntered = self.app.getEntry("MemorableWordEntered")
-        if type(FirstnameEntered) is None or type(SurnameEntered) is None or type(UsernameEntered) is None or type(PasswordEntered) is None or type(
-                RepeatPasswordEntered) is None or type(MemorableWordEntered) is None: #Checks if fields that are required are empty
-            prin
+    def createAnAccountValidation(self):
+        firstnameEntered = self.app.getEntry("FirstnameEntry")
+        surnameEntered = self.app.getEntry("SurnameEntry")
+        usernameEntered = self.app.getEntry("UsernameEntry")
+        passwordEntered = self.app.getEntry("PasswordEntry")
+        repeatPasswordEntered = self.app.getEntry("RepeatPasswordEntry")
+        phoneNumberEntered = self.app.getEntry("PhoneNumberEntry")
+        memorableWordEntered = self.app.getEntry("MemorableWordEntry")
+        if firstnameEntered == "" or surnameEntered == "" or usernameEntered == "" or passwordEntered == "" or repeatPasswordEntered == "" or phoneNumberEntered == "" or memorableWordEntered == "":  # Checks if fields that are required are empty
+            self.app.infoBox("Create An Account", "Ensure that all required fields are filled in")
+            return False
+        else:
+            correctFields = self.checkCreateAccountFields(firstnameEntered, surnameEntered, usernameEntered, passwordEntered, repeatPasswordEntered,
+                                                          phoneNumberEntered, memorableWordEntered)
+            if correctFields:
+                userId = self.userId()
+                self.cur.execute("INSERT INTO tbl_users VALUES (?, ?, ?, ?, ?, ?, ?)",
+                            (firstnameEntered, surnameEntered, usernameEntered, passwordEntered, repeatPasswordEntered, phoneNumberEntered,
+                             memorableWordEntered))
+                self.con.commit()
+                return True
 
+    def checkCreateAccountFields(self, firstnameEntered, surnameEntered, usernameEntered, passwordEntered, repeatPasswordEntered, phoneNumberEntered,
+                                 memorableWordEntered):
+        integers = 0
+        capitals = 0
+        self.cur.execute("SELECT Username FROM tbl_users WHERE Username = ?",
+                         (usernameEntered,))  # checks if the username entered is in the database
+        username = self.cur.fetchone()
+        if username[0] :
+            self.app.infoBox("Create An Account", "There is an existing account with this username")
+            return False
 
+        for i in passwordEntered:
+            if passwordEntered[i].isnumeric():
+                integers += 1
+            elif passwordEntered[i].isUpper():
+                capitals += 1
 
+        if len(passwordEntered) < 8 or len(passwordEntered) > 24 or integers < 2 or capitals < 1:
+            self.app.infoBox("Create An Account", "Passwords must be between 8 and 24 inclusive, have at least 2 integers and at least 1 capital letter")
+            return False
+
+        if passwordEntered == repeatPasswordEntered:
+            self.app.infoBox("Create An Account", "Repeat password and Password do not match")
+            return False
+
+        if not firstnameEntered.isalpha() or not surnameEntered.isalpha():
+            self.app.infoBox("Create An Account", "Username and Surname must only contain letters")
+            return False
+
+        if phoneNumberEntered != "":
+            if len(phoneNumberEntered) != 11 or phoneNumberEntered[:2] != "07":
+                self.app.infoBox("Create An Account", "Phone numbers should be 11 digits long and start with 07")
+                return False
+
+        return True
+
+    def userId(self):
+        userNum = 100
+        createUserId = "U" + str(userNum)
+        self.cur.execute("SELECT UserID FROM tbl_users WHERE UserID = ?", (createUserId,))  # checks if the username entered is in the database
+        existingUserID = self.cur.fetchone()
+        while type(existingUserID) is None:
+            userNum += 1
+            createUserId = "U" + str(userNum)
+            self.cur.execute("SELECT UserID FROM tbl_users WHERE UserID = ?", (createUserId,))  # checks if the username entered is in the database
+            existingUserID = self.cur.fetchone()
+        return createUserId
 
     def buttonPress(self, name):
         if name == "BookPitch1":
@@ -279,11 +333,12 @@ class BookingSoftware:
 
     def doCreateAnAccountSubmit(self):
         # stores the result of a question box in the variable
-        CreateAccountConfirmation = self.app.questionBox("Create An Account", "Are you sure you want to create an account?")
-        if CreateAccountConfirmation:  # checks if the result was true
-            CreateAccountConfirmation()
-            self.app.infoBox("Create An Account",
-                             "Your account has been created!")  # displays a pop-up box that says the account has been created
+        createAccountConfirmation = self.app.questionBox("Create An Account", "Are you sure you want to create an account?")
+        if createAccountConfirmation:  # checks if the result was true
+            validation = self.createAnAccountValidation()
+            if validation:
+                self.app.infoBox("Create An Account",
+                                 "Your account has been created!")  # displays a pop-up box that says the account has been created
 
     def doCreateAccountToLogIn(self):
         self.app.hideSubWindow("window_CreateAnAccount")  # hides the Main Menu Sub-window
