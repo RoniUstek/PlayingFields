@@ -265,42 +265,44 @@ class BookingSoftware:
         repeatPasswordEntered = self.app.getEntry("RepeatPasswordEntry")
         phoneNumberEntered = self.app.getEntry("PhoneNumberEntry")
         memorableWordEntered = self.app.getEntry("MemorableWordEntry")
-        if firstnameEntered == "" or surnameEntered == "" or usernameEntered == "" or passwordEntered == "" or repeatPasswordEntered == "" or phoneNumberEntered == "" or memorableWordEntered == "":  # Checks if fields that are required are empty
+
+        if firstnameEntered == "" or surnameEntered == "" or usernameEntered == "" or passwordEntered == "" or repeatPasswordEntered == "" or memorableWordEntered == "":  # Checks if fields that are required are empty
             self.app.infoBox("Create An Account", "Ensure that all required fields are filled in")
             return False
         else:
-            correctFields = self.checkCreateAccountFields(firstnameEntered, surnameEntered, usernameEntered, passwordEntered, repeatPasswordEntered,
-                                                          phoneNumberEntered, memorableWordEntered)
+            correctFields = self.checkCreateAccountFields(usernameEntered, passwordEntered, repeatPasswordEntered, firstnameEntered, surnameEntered,
+                                                          phoneNumberEntered)
             if correctFields:
                 userId = self.userId()
                 self.cur.execute("INSERT INTO tbl_users VALUES (?, ?, ?, ?, ?, ?, ?)",
-                            (firstnameEntered, surnameEntered, usernameEntered, passwordEntered, repeatPasswordEntered, phoneNumberEntered,
-                             memorableWordEntered))
+                                 (userId, usernameEntered, firstnameEntered, surnameEntered, passwordEntered, phoneNumberEntered,
+                                  memorableWordEntered))
                 self.con.commit()
-                return True
+            return True
 
-    def checkCreateAccountFields(self, firstnameEntered, surnameEntered, usernameEntered, passwordEntered, repeatPasswordEntered, phoneNumberEntered,
-                                 memorableWordEntered):
+    def checkCreateAccountFields(self, usernameEntered, passwordEntered, repeatPasswordEntered, firstnameEntered, surnameEntered, phoneNumberEntered):
         integers = 0
         capitals = 0
         self.cur.execute("SELECT Username FROM tbl_users WHERE Username = ?",
                          (usernameEntered,))  # checks if the username entered is in the database
-        username = self.cur.fetchone()
-        if username[0] :
-            self.app.infoBox("Create An Account", "There is an existing account with this username")
+        username = self.cur.fetchone()  # stores the first tuple returned
+
+        if username is not None and username[0] is not None:  # checks if there was a value in the database that equals the entered username
+            self.app.infoBox("Create An Account", "There is an existing account with this username")  # tells the user that this username already exists
             return False
 
-        for i in passwordEntered:
-            if passwordEntered[i].isnumeric():
-                integers += 1
-            elif passwordEntered[i].isUpper():
-                capitals += 1
+        for i in passwordEntered:  # iterates through all the characters in the entered password
+            if i.isdigit():  # checks if the character is an integer
+                integers += 1  # if the character is an integer the integer variable is incremented
+            elif i.isupper():  # checks if the character is a capital letter
+                capitals += 1  # if the character is a capital letter the capital variable is incremented
 
-        if len(passwordEntered) < 8 or len(passwordEntered) > 24 or integers < 2 or capitals < 1:
+        if len(passwordEntered) < 8 or len(
+                passwordEntered) > 24 or integers < 2 or capitals < 1:  # checks if the password is between 8 and 24 characters, has at least 2 integers and at least 1 capital letter.
             self.app.infoBox("Create An Account", "Passwords must be between 8 and 24 inclusive, have at least 2 integers and at least 1 capital letter")
             return False
 
-        if passwordEntered == repeatPasswordEntered:
+        if passwordEntered != repeatPasswordEntered:
             self.app.infoBox("Create An Account", "Repeat password and Password do not match")
             return False
 
@@ -312,15 +314,14 @@ class BookingSoftware:
             if len(phoneNumberEntered) != 11 or phoneNumberEntered[:2] != "07":
                 self.app.infoBox("Create An Account", "Phone numbers should be 11 digits long and start with 07")
                 return False
-
         return True
 
     def userId(self):
         userNum = 100
-        createUserId = "U" + str(userNum)
+        createUserId = "U" + str(userNum)  # concatenated the letter U with the userNUm
         self.cur.execute("SELECT UserID FROM tbl_users WHERE UserID = ?", (createUserId,))  # checks if the username entered is in the database
         existingUserID = self.cur.fetchone()
-        while type(existingUserID) is None:
+        while existingUserID is not None and existingUserID[0] is not None:
             userNum += 1
             createUserId = "U" + str(userNum)
             self.cur.execute("SELECT UserID FROM tbl_users WHERE UserID = ?", (createUserId,))  # checks if the username entered is in the database
@@ -431,40 +432,40 @@ class BookingSoftware:
 
     def createDatabase(self):  # creates the databases and add the fields needed.
         self.cur.execute(""" CREATE TABLE IF NOT EXISTS 'tbl_users' (
-                    UserID TEXT NOT NULL PRIMARY KEY,
-                    Username TEXT NOT NULL,
-                    Firstname TEXT NOT NULL,
-                    Surname TEXT NOT NULL,
-                    Password TEXT NOT NULL,
-                    PhoneNumber TEXT NOT NULL,
-                    MemorableWord TEXT NOT NULL
-        )""")
+                        UserID TEXT NOT NULL PRIMARY KEY,
+                        Username TEXT NOT NULL,
+                        Firstname TEXT NOT NULL,
+                        Surname TEXT NOT NULL,
+                        Password TEXT NOT NULL,
+                        PhoneNumber TEXT NOT NULL,
+                        MemorableWord TEXT NOT NULL
+            )""")
 
         self.cur.execute(""" CREATE TABLE IF NOT EXISTS 'tbl_bookings' (
-                    BookingID TEXT NOT NULL PRIMARY KEY,
-                    PitchNumber INTEGER NOT NULL,
-                    Date DATE NOT NULL,
-                    Time TIME NOT NULL,
-                    Price FLOAT NOT NULL,
-                    Username TEXT NOT NULL,
-                    FOREIGN KEY (PitchNumber) REFERENCES tbl_pitches (PitchNumber)
-        )""")
+                        BookingID TEXT NOT NULL PRIMARY KEY,
+                        PitchNumber INTEGER NOT NULL,
+                        Date DATE NOT NULL,
+                        Time TIME NOT NULL,
+                        Price FLOAT NOT NULL,
+                        Username TEXT NOT NULL,
+                        FOREIGN KEY (PitchNumber) REFERENCES tbl_pitches (PitchNumber)
+            )""")
 
         self.cur.execute(""" CREATE TABLE IF NOT EXISTS 'tbl_pitches' (
-                    PitchNumber INTEGER NOT NULL PRIMARY KEY,
-                    PitchSize TEXT NOT NULL,
-                    PitchPrice FLOAT NOT NULL
-        )""")
+                        PitchNumber INTEGER NOT NULL PRIMARY KEY,
+                        PitchSize TEXT NOT NULL,
+                        PitchPrice FLOAT NOT NULL
+            )""")
 
         self.cur.execute(""" CREATE TABLE IF NOT EXISTS 'tbl_userBookings' (
-                    UserBookingID TEXT NOT NULL PRIMARY KEY,
-                    TIME TIME NOT NULL,
-                    BookingID INTEGER NOT NULL,
-                    UserID INTEGER NOT NULL,
-                    FOREIGN KEY (BookingID) REFERENCES tbl_bookings (BookingID),
-                    FOREIGN KEY (UserID) REFERENCES tbl_users (UserID)
-
-        )""")
+                        UserBookingID TEXT NOT NULL PRIMARY KEY,
+                        TIME TIME NOT NULL,
+                        BookingID INTEGER NOT NULL,
+                        UserID INTEGER NOT NULL,
+                        FOREIGN KEY (BookingID) REFERENCES tbl_bookings (BookingID),
+                        FOREIGN KEY (UserID) REFERENCES tbl_users (UserID)
+    
+            )""")
 
         self.con.commit()  # commit all the changes made
 
