@@ -328,6 +328,14 @@ class BookingSoftware:
             existingUserID = self.cur.fetchone()
         return createUserId
 
+    def forgotPasswordValidation(self):
+        username = self.app.getEntry("UsernameChecker")  # stores the users entry in the username variable
+        memorableWord = self.app.getEntry("MemorableWordChecker")  # stores the users entry in the memorable word variable
+        self.cur.execute("SELECT Password FROM tbl_users WHERE Username = ? AND MemorableWord = ?",
+                         (username, memorableWord,))  # fetches the password that is in the same record as the users inputs
+        password = self.cur.fetchone()  # stores the tuple returned in the password variable
+        return password  # returns the password variable
+
     def buttonPress(self, name):
         if name == "BookPitch1":
             pitchNum = 1
@@ -336,8 +344,8 @@ class BookingSoftware:
         # stores the result of a question box in the variable
         createAccountConfirmation = self.app.questionBox("Create An Account", "Are you sure you want to create an account?")
         if createAccountConfirmation:  # checks if the result was true
-            validation = self.createAnAccountValidation()
-            if validation:
+            validInfo = self.createAnAccountValidation()
+            if validInfo:
                 self.app.infoBox("Create An Account",
                                  "Your account has been created!")  # displays a pop-up box that says the account has been created
 
@@ -350,7 +358,13 @@ class BookingSoftware:
         self.app.showSubWindow("window_ForgotPassword")  # shows the Forgot Password Sub-window
 
     def doGetPassword(self):
-        self.app.infoBox("Forgot Password", "Your Password is: ")  # displays a pop-up box that tells the user their password
+        returnedPassword = self.forgotPasswordValidation()  # stores the tuple returned by the function
+        if returnedPassword is not None:  # checks if the tuple is not empty as that means the details entered were correct
+            password = returnedPassword[0]  # stores the first value of the tuple in the password variable
+            self.app.infoBox("Forgot Password", "Your Password is: " + password)  # displays a pop-up box that tells the user their password
+        else:
+            self.app.infoBox("Forgot Password",
+                             "Memorable Word and password do not match ")  # displays a pop-up box that tells the user their memorable word and password do not match
 
     def doBackToLogIn(self):
         self.app.hideSubWindow("window_ForgotPassword")  # hides the Forgot Password Sub-window
