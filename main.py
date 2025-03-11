@@ -1,5 +1,6 @@
 import sqlite3  # imports the SQL library.
 from appJar import gui  # import gui from the self.app.ar library
+from datetime import datetime, timedelta
 
 
 class BookingSoftware:
@@ -11,7 +12,9 @@ class BookingSoftware:
         self.seconds = 10
         self.running = False
         self.createInterface()
-        self.app.go()
+        self.app.go(startWindow="window_Booking")
+
+
 
     def createInterface(self):
         # LOGIN PAGE: this is the initial starting page of the software,
@@ -140,19 +143,13 @@ class BookingSoftware:
 
         # Booking: this is the page where users will be able to put all the details of the pitch they want to book
         #          as well as the date and time, allowing them to make a booking
+        todayDate = datetime.now()
+        nextTwoWeeks = [self.dates((todayDate + timedelta(days=i)).strftime("%Y - %m - %d %H:%M:%S")) for i in range(14)]
         self.app.startSubWindow("window_Booking")
         self.app.setSize("600x300")
         self.app.setSticky("W")
         self.app.addLabel("lb_Booking", "Booking", 0, 1)
-        self.app.addLabelOptionBox("Date: ", ["01/01/25", "02/01/25", "03/01/25", "04/01/25",
-                                              "05/01/25", "06/01/25", "07/01/25", "08/01/25", "09/01/25", "10/01/25",
-                                              "11/01/25",
-                                              "12/01/25", "13/01/25", "14/01/25", "15/01/25", "16/01/25", "17/01/25",
-                                              "18/01/25",
-                                              "19/01/25", "20/01/25", "21/01/25", "22/01/25", "23/01/25", "24/01/25",
-                                              "25/01/25",
-                                              "26/01/25", "27/01/25", "28/01/25", "29/01/25", "30/01/25", "31/01/25"],
-                                   1, 1)
+        self.app.addLabelOptionBox("Date: ", nextTwoWeeks, 1, 1)
         self.app.addLabelSpinBox("Time: ",
                                  ["8:00", "8:30", "9:00", "9:30", "10:00", "11:00", "11:30", "12:00", "12:30", "13:00",
                                   "13:30",
@@ -278,7 +275,9 @@ class BookingSoftware:
                                  (userId, usernameEntered, firstnameEntered, surnameEntered, passwordEntered, phoneNumberEntered,
                                   memorableWordEntered))
                 self.con.commit()
-            return True
+                return True
+            else:
+                return False
 
     def checkCreateAccountFields(self, usernameEntered, passwordEntered, repeatPasswordEntered, firstnameEntered, surnameEntered, phoneNumberEntered):
         integers = 0
@@ -291,10 +290,10 @@ class BookingSoftware:
             self.app.infoBox("Create An Account", "There is an existing account with this username")  # tells the user that this username already exists
             return False
 
-        for i in passwordEntered:  # iterates through all the characters in the entered password
-            if i.isdigit():  # checks if the character is an integer
+        for char in passwordEntered:  # iterates through all the characters in the entered password
+            if char.isdigit():  # checks if the character is an integer
                 integers += 1  # if the character is an integer the integer variable is incremented
-            elif i.isupper():  # checks if the character is a capital letter
+            elif char.isupper():  # checks if the character is a capital letter
                 capitals += 1  # if the character is a capital letter the capital variable is incremented
 
         if len(passwordEntered) < 8 or len(
@@ -348,10 +347,24 @@ class BookingSoftware:
             if validInfo:
                 self.app.infoBox("Create An Account",
                                  "Your account has been created!")  # displays a pop-up box that says the account has been created
+                self.app.clearEntry("FirstnameEntry")
+                self.app.clearEntry("SurnameEntry")
+                self.app.clearEntry("UsernameEntry")
+                self.app.clearEntry("PasswordEntry")
+                self.app.clearEntry("RepeatPasswordEntry")
+                self.app.clearEntry("PhoneNumberEntry")
+                self.app.clearEntry("MemorableWordEntry")
 
     def doCreateAccountToLogIn(self):
         self.app.hideSubWindow("window_CreateAnAccount")  # hides the Main Menu Sub-window
         self.app.show()  # shows the Main log in page
+        self.app.clearEntry("FirstnameEntry")
+        self.app.clearEntry("SurnameEntry")
+        self.app.clearEntry("UsernameEntry")
+        self.app.clearEntry("PasswordEntry")
+        self.app.clearEntry("RepeatPasswordEntry")
+        self.app.clearEntry("PhoneNumberEntry")
+        self.app.clearEntry("MemorableWordEntry")
 
     def doForgotPassword(self):
         self.app.hide()  # Hides the Main Log in page
@@ -364,7 +377,12 @@ class BookingSoftware:
             self.app.infoBox("Forgot Password", "Your Password is: " + password)  # displays a pop-up box that tells the user their password
         else:
             self.app.infoBox("Forgot Password",
-                             "Memorable Word and password do not match ")  # displays a pop-up box that tells the user their memorable word and password do not match
+                             "Memorable Word and Username do not match ")  # displays a pop-up box that tells the user their memorable word and password do not match
+
+    def dates(self, todayDate):
+        date = datetime.strptime(todayDate, "%Y - %m - %d %H:%M:%S")  # strips the original format of the datetime object and assigns it to a variable
+        convertedDate = date.strftime("%d/%m/%y")  # formats the date into the DD/MM/YYYY format
+        return convertedDate  # returns the convertedDate
 
     def doBackToLogIn(self):
         self.app.hideSubWindow("window_ForgotPassword")  # hides the Forgot Password Sub-window
@@ -510,6 +528,9 @@ class BookingSoftware:
                              [PitchNumber, PitchSize, PitchPrice])
         self.con.commit()  # commit all the changes made
 
+    self.addExistingBookings()
+
 
 if __name__ == "__main__":
     BookingSoftware()
+
