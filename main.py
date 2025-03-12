@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 class BookingSoftware:
     def __init__(self):
+        self.username = None
         self.app = gui("PlayingFields booking system")
         self.con = sqlite3.connect("pfDatabase.db")  # create my database and store it in the variable con.
         self.cur = self.con.cursor()  # set up the cursor value in my database and store it in the variable self.cur.
@@ -12,9 +13,9 @@ class BookingSoftware:
         self.seconds = 10
         self.running = False
         self.createInterface()
-        self.app.go(startWindow="window_Booking")
-
-
+        self.app.go()
+        self.pitchNum = None
+        self.pitchPrice = None
 
     def createInterface(self):
         # LOGIN PAGE: this is the initial starting page of the software,
@@ -158,15 +159,15 @@ class BookingSoftware:
                                   "19:30", "20:00"], 9, 1)
         self.app.addButton("BookingToPitchSizeSelection", self.doBookingToPitchSizeSelection, 9, 3)
         self.app.setButton("BookingToPitchSizeSelection", "Back")
-        self.app.addButton("BookPitch1", self.buttonPress, 4, 1)
+        self.app.addButton("BookPitch1", self.doSelectPitch, 4, 1)
         self.app.setButton("BookPitch1", "Pitch 1 ")
-        self.app.addButton("BookPitch2", self.buttonPress, 4, 2)
+        self.app.addButton("BookPitch2", self.doSelectPitch, 4, 2)
         self.app.setButton("BookPitch2", "Pitch 2")
-        self.app.addButton("BookPitch3", self.buttonPress, 5, 1)
+        self.app.addButton("BookPitch3", self.doSelectPitch, 5, 1)
         self.app.setButton("BookPitch3", "Pitch 3")
-        self.app.addButton("BookPitch4", self.buttonPress, 5, 2)
+        self.app.addButton("BookPitch4", self.doSelectPitch, 5, 2)
         self.app.setButton("BookPitch4", "Pitch 4")
-        self.app.addButton("BookPitch5", self.buttonPress, 6, 1)
+        self.app.addButton("BookPitch5", self.doSelectPitch, 6, 1)
         self.app.setButton("BookPitch5", "Pitch 5")
         self.app.addButton("MakeBooking", self.doMakeBooking, 4, 3, 2, 2)
         self.app.setButton("MakeBooking", "Book Pitch")
@@ -207,6 +208,7 @@ class BookingSoftware:
         if validUser[0] == usernameEntered and validUser[1] == passwordEntered:  # checks if the username and password are correct
             # checks if the values retrieved from the SQL statement are the same as the users inputs
             self.attempts = 0
+            self.username = validUser[0]
             return True
 
         return self.checkAttempts()
@@ -318,7 +320,7 @@ class BookingSoftware:
     def userId(self):
         userNum = 100
         createUserId = "U" + str(userNum)  # concatenated the letter U with the userNUm
-        self.cur.execute("SELECT UserID FROM tbl_users WHERE UserID = ?", (createUserId,))  # checks if the username entered is in the database
+        self.cur.execute("SELECT UserID FROM tbl_users WHERE UserID = ?", (createUserId,))  # checks if the UserID entered is in the database
         existingUserID = self.cur.fetchone()
         while existingUserID is not None and existingUserID[0] is not None:
             userNum += 1
@@ -334,10 +336,6 @@ class BookingSoftware:
                          (username, memorableWord,))  # fetches the password that is in the same record as the users inputs
         password = self.cur.fetchone()  # stores the tuple returned in the password variable
         return password  # returns the password variable
-
-    def buttonPress(self, name):
-        if name == "BookPitch1":
-            pitchNum = 1
 
     def doCreateAnAccountSubmit(self):
         # stores the result of a question box in the variable
@@ -383,6 +381,29 @@ class BookingSoftware:
         date = datetime.strptime(todayDate, "%Y - %m - %d %H:%M:%S")  # strips the original format of the datetime object and assigns it to a variable
         convertedDate = date.strftime("%d/%m/%y")  # formats the date into the DD/MM/YYYY format
         return convertedDate  # returns the convertedDate
+
+    def bookingValidation(self):
+        bookingId = self.bookingId()  # stores the bookingId created by the bookingId() function in the bookingId variable
+        date = self.app.getOptionBox("Date: ")  # stores the date selected by the user in the option box in the date variable
+        time = self.app.getSpinBox("Time: ")  # stores the time selected by the user in the spin box in the time variable
+        price = self.pitchPrice  # stores the price of the pitch that was set depending on the pitch selected
+        num = self.pitchNum  # stores the number of the pitch that was set depending on the pitch selected
+        username = self.username  # stores the username of the user that is logged in
+        self.cur.execute("INSERT INTO tbl_bookings (BookingID, PitchNumber, Date, Time, Price, Username) VALUES (?,?,?,?,?,?)",
+                         (bookingId, num, date, time, price, username))  # inserts the details into the tbl_bookings table
+        self.con.commit()
+
+    def bookingId(self):
+        bookingNum = 100
+        createBookingId = "B" + str(bookingNum)  # concatenated the letter B with the bookingNum
+        self.cur.execute("SELECT BookingID FROM tbl_bookings WHERE BookingID = ?", (createBookingId,))  # checks if the bookingID entered is in the database
+        existingBookingID = self.cur.fetchone()
+        while existingBookingID is not None and existingBookingID[0] is not None:
+            bookingNum += 1
+            createBookingId = "B" + str(bookingNum)
+            self.cur.execute("SELECT BookingsID FROM tbl_bookings WHERE BookingID = ?", (createBookingId,))  # checks if the bookingID entered is in the database
+            existingBookingID = self.cur.fetchone()
+        return createBookingId
 
     def doBackToLogIn(self):
         self.app.hideSubWindow("window_ForgotPassword")  # hides the Forgot Password Sub-window
@@ -441,6 +462,7 @@ class BookingSoftware:
         bookingConfirmation = self.app.questionBox("Booking",
                                                    "Are you sure you want to Make this booking?")  # stores the result of a question box in the variable
         if bookingConfirmation:  # checks if the result was true
+            self.bookingValidation()
             self.app.infoBox("Booking", "Booking Successful!")  # displays a pop-up box
             self.app.hideSubWindow("window_Booking")  # hides the Booking Sub-window
             self.app.showSubWindow("window_BookingSummary")  # shows the BookingSummary page
@@ -452,6 +474,23 @@ class BookingSoftware:
     def doSignUp(self):
         self.app.hide()  # Hides the Main Log in page
         self.app.showSubWindow("window_CreateAnAccount")  # shows the Create An Account Sub-window
+
+    def doSelectPitch(self, name):
+        if name == "BookPitch1":
+            self.pitchNum = "1"
+            self.pitchPrice = "50"
+        elif name == "BookPitch2":
+            self.pitchNum = "2"
+            self.pitchPrice = "50"
+        elif name == "BookPitch3":
+            self.pitchNum = "3"
+            self.pitchPrice = "75"
+        elif name == "BookPitch4":
+            self.pitchNum = "4"
+            self.pitchPrice = "75"
+        elif name == "BookPitch5":
+            self.pitchNum = "5"
+            self.pitchPrice = "100"
 
     # checks if the buttons name is Sign In
     def doSignin(self):
@@ -528,9 +567,6 @@ class BookingSoftware:
                              [PitchNumber, PitchSize, PitchPrice])
         self.con.commit()  # commit all the changes made
 
-    self.addExistingBookings()
-
 
 if __name__ == "__main__":
     BookingSoftware()
-
