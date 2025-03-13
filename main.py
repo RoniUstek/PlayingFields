@@ -3,9 +3,26 @@ from appJar import gui  # import gui from the self.app.ar library
 from datetime import datetime, timedelta
 
 
+def dates(todayDate):
+    date = datetime.strptime(todayDate, "%Y - %m - %d %H:%M:%S")  # strips the original format of the datetime object and assigns it to a variable
+    convertedDate = date.strftime("%d/%m/%y")  # formats the date into the DD/MM/YYYY format
+    return convertedDate  # returns the convertedDate
+
+
+def times(time):
+    if len(time) <= 5:  # checks if the time variable is not in the correct format for example "09:30"
+        time += ":00"  # adds a ":00" to the end of the string converting it to "9:30:00"
+    timeObj = datetime.strptime(time, "%H:%M:%S")  # strips the time of the HH/MM/SS format
+    formattedTime = timeObj.strftime("%I:%M:%S %p")  # formats the time into 12-hour format with AM/PM
+    return formattedTime
+
+
 class BookingSoftware:
     def __init__(self):
+        self.pitchSize = None
         self.username = None
+        self.pitchNum = None
+        self.pitchPrice = None
         self.app = gui("PlayingFields booking system")
         self.con = sqlite3.connect("pfDatabase.db")  # create my database and store it in the variable con.
         self.cur = self.con.cursor()  # set up the cursor value in my database and store it in the variable self.cur.
@@ -14,8 +31,6 @@ class BookingSoftware:
         self.running = False
         self.createInterface()
         self.app.go()
-        self.pitchNum = None
-        self.pitchPrice = None
 
     def createInterface(self):
         # LOGIN PAGE: this is the initial starting page of the software,
@@ -145,17 +160,17 @@ class BookingSoftware:
         # Booking: this is the page where users will be able to put all the details of the pitch they want to book
         #          as well as the date and time, allowing them to make a booking
         todayDate = datetime.now()
-        nextTwoWeeks = [self.dates((todayDate + timedelta(days=i)).strftime("%Y - %m - %d %H:%M:%S")) for i in range(14)]
+        nextTwoWeeks = [dates((todayDate + timedelta(days=i)).strftime("%Y - %m - %d %H:%M:%S")) for i in range(14)]
         self.app.startSubWindow("window_Booking")
         self.app.setSize("600x300")
         self.app.setSticky("W")
         self.app.addLabel("lb_Booking", "Booking", 0, 1)
         self.app.addLabelOptionBox("Date: ", nextTwoWeeks, 1, 1)
         self.app.addLabelSpinBox("Time: ",
-                                 ["8:00", "8:30", "9:00", "9:30", "10:00", "11:00", "11:30", "12:00", "12:30", "13:00",
+                                 ["8:00", "8:30", "9:00", "9:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00",
                                   "13:30",
                                   "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00",
-                                  "18:30",
+                                  "18:30", "19:00",
                                   "19:30", "20:00"], 9, 1)
         self.app.addButton("BookingToPitchSizeSelection", self.doBookingToPitchSizeSelection, 9, 3)
         self.app.setButton("BookingToPitchSizeSelection", "Back")
@@ -377,21 +392,46 @@ class BookingSoftware:
             self.app.infoBox("Forgot Password",
                              "Memorable Word and Username do not match ")  # displays a pop-up box that tells the user their memorable word and password do not match
 
-    def dates(self, todayDate):
-        date = datetime.strptime(todayDate, "%Y - %m - %d %H:%M:%S")  # strips the original format of the datetime object and assigns it to a variable
-        convertedDate = date.strftime("%d/%m/%y")  # formats the date into the DD/MM/YYYY format
-        return convertedDate  # returns the convertedDate
-
     def bookingValidation(self):
         bookingId = self.bookingId()  # stores the bookingId created by the bookingId() function in the bookingId variable
         date = self.app.getOptionBox("Date: ")  # stores the date selected by the user in the option box in the date variable
         time = self.app.getSpinBox("Time: ")  # stores the time selected by the user in the spin box in the time variable
+        formattedTime = times(time)
         price = self.pitchPrice  # stores the price of the pitch that was set depending on the pitch selected
         num = self.pitchNum  # stores the number of the pitch that was set depending on the pitch selected
         username = self.username  # stores the username of the user that is logged in
-        self.cur.execute("INSERT INTO tbl_bookings (BookingID, PitchNumber, Date, Time, Price, Username) VALUES (?,?,?,?,?,?)",
-                         (bookingId, num, date, time, price, username))  # inserts the details into the tbl_bookings table
-        self.con.commit()
+        self.cur.execute("SELECT Date, Time, PitchNumber FROM tbl_bookings WHERE Date = ? AND Time = ? AND PitchNumber = ?", (date, formattedTime, num,))
+        invalidBooking = self.cur.fetchone()
+        if invalidBooking is None:
+            self.cur.execute("INSERT INTO tbl_bookings (BookingID, PitchNumber, Date, Time, Price, Username) VALUES (?,?,?,?,?,?)",
+                             (bookingId, num, date, formattedTime, price, username))  # inserts the details into the tbl_bookings table
+            self.con.commit()
+            return True
+        else:
+            return False
+
+    def disable7aside(self):
+        self.app.disableButton("BookPitch3")
+        self.app.disableButton("BookPitch4")
+        self.app.disableButton("BookPitch5")
+
+    def disable9aside(self):
+        self.app.disableButton("BookPitch1")
+        self.app.disableButton("BookPitch2")
+        self.app.disableButton("BookPitch5")
+
+    def disable11aside(self):
+        self.app.disableButton("BookPitch1")
+        self.app.disableButton("BookPitch2")
+        self.app.disableButton("BookPitch3")
+        self.app.disableButton("BookPitch4")
+
+    def enablePitches(self):
+        self.app.enableButton("BookPitch1")
+        self.app.enableButton("BookPitch2")
+        self.app.enableButton("BookPitch3")
+        self.app.enableButton("BookPitch4")
+        self.app.enableButton("BookPitch5")
 
     def bookingId(self):
         bookingNum = 100
@@ -401,7 +441,7 @@ class BookingSoftware:
         while existingBookingID is not None and existingBookingID[0] is not None:
             bookingNum += 1
             createBookingId = "B" + str(bookingNum)
-            self.cur.execute("SELECT BookingsID FROM tbl_bookings WHERE BookingID = ?", (createBookingId,))  # checks if the bookingID entered is in the database
+            self.cur.execute("SELECT BookingID FROM tbl_bookings WHERE BookingID = ?", (createBookingId,))  # checks if the bookingID entered is in the database
             existingBookingID = self.cur.fetchone()
         return createBookingId
 
@@ -427,11 +467,17 @@ class BookingSoftware:
             self.app.hideSubWindow("window_MainMenu")  # hides the Main Menu Sub-window
             self.app.show()  # shows the Main log in page
 
-    def doPitchSelectionToMainMenu(self):
+    def doPitchSelectionToMainMenu(self, name):
         self.app.hideSubWindow("window_PitchSizeSelection")  # hides the Pitch Size Selection Sub-window
         self.app.showSubWindow("window_MainMenu")  # shows the Main Menu page
 
-    def doPitchSelection(self):
+    def doPitchSelection(self, name):
+        if name == "7asideSelection":
+            self.disable7aside()
+        elif name == "9asideSelection":
+            self.disable9aside()
+        elif name == "11asideSelection":
+            self.disable11aside()
         self.app.hideSubWindow("window_PitchSizeSelection")  # hides the Pitch Size Selection Sub-window
         self.app.showSubWindow("window_Booking")  # shows the Booking Sub-window
 
@@ -455,6 +501,7 @@ class BookingSoftware:
         self.app.showSubWindow("window_MainMenu")  # shows the Pitch Size Selection page
 
     def doBookingToPitchSizeSelection(self):
+        self.enablePitches()
         self.app.hideSubWindow("window_Booking")  # hides the Booking Sub-window
         self.app.showSubWindow("window_PitchSizeSelection")  # shows the Pitch Size Selection page
 
@@ -462,10 +509,14 @@ class BookingSoftware:
         bookingConfirmation = self.app.questionBox("Booking",
                                                    "Are you sure you want to Make this booking?")  # stores the result of a question box in the variable
         if bookingConfirmation:  # checks if the result was true
-            self.bookingValidation()
-            self.app.infoBox("Booking", "Booking Successful!")  # displays a pop-up box
-            self.app.hideSubWindow("window_Booking")  # hides the Booking Sub-window
-            self.app.showSubWindow("window_BookingSummary")  # shows the BookingSummary page
+            validBooking = self.bookingValidation()
+            if validBooking:
+                self.app.infoBox("Booking", "Booking Successful!")  # displays a pop-up box
+                self.app.hideSubWindow("window_Booking")  # hides the Booking Sub-window
+                self.app.showSubWindow("window_BookingSummary")  # shows the BookingSummary page
+            else:
+                self.app.infoBox("Booking", "There is already a booking at this date and time")  # tells the user that there is already a booking at this time
+        self.enablePitches()  # enables the button widget
 
     def doBookingSummaryToMainMenu(self):
         self.app.hideSubWindow("window_BookingSummary")  # hides the BookingSummary Sub-window
