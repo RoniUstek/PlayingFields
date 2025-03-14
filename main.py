@@ -19,6 +19,8 @@ def times(time):
 
 class BookingSoftware:
     def __init__(self):
+        self.bookingIds = None
+        self.retrievedBookingId = None
         self.pitchSize = None
         self.username = None
         self.pitchNum = None
@@ -152,7 +154,7 @@ class BookingSoftware:
         self.app.addLabel("lb_ViewBooking", "View Booking", 0, 2)
         self.app.addButton("ViewBookingToMainMenu", self.doViewBookingToMainMenu, 9, 2)
         self.app.setButton("ViewBookingToMainMenu", "Main Menu")
-        self.app.addLabelOptionBox("Select a Booking ID :", ["100", "101", "102", "103"], 3, 2)
+        self.app.addLabelOptionBox("Select a Booking ID :", [""], 3, 2)
         self.app.addButton("GetBookingInfo", self.doGetBookingInfo, 6, 2)
         self.app.setButton("GetBookingInfo", "View Booking")
         self.app.stopSubWindow()
@@ -393,7 +395,7 @@ class BookingSoftware:
                              "Memorable Word and Username do not match ")  # displays a pop-up box that tells the user their memorable word and password do not match
 
     def bookingValidation(self):
-        bookingId = self.bookingId()  # stores the bookingId created by the bookingId() function in the bookingId variable
+        bookingId = self.createBookingId()  # stores the bookingId created by the bookingId() function in the bookingId variable
         date = self.app.getOptionBox("Date: ")  # stores the date selected by the user in the option box in the date variable
         time = self.app.getSpinBox("Time: ")  # stores the time selected by the user in the spin box in the time variable
         formattedTime = times(time)
@@ -433,7 +435,7 @@ class BookingSoftware:
         self.app.enableButton("BookPitch4")
         self.app.enableButton("BookPitch5")
 
-    def bookingId(self):
+    def createBookingId(self):
         bookingNum = 100
         createBookingId = "B" + str(bookingNum)  # concatenated the letter B with the bookingNum
         self.cur.execute("SELECT BookingID FROM tbl_bookings WHERE BookingID = ?", (createBookingId,))  # checks if the bookingID entered is in the database
@@ -444,6 +446,17 @@ class BookingSoftware:
             self.cur.execute("SELECT BookingID FROM tbl_bookings WHERE BookingID = ?", (createBookingId,))  # checks if the bookingID entered is in the database
             existingBookingID = self.cur.fetchone()
         return createBookingId
+
+    def retrieveBookingId(self):
+        self.cur.execute("SELECT BookingID FROM tbl_bookings WHERE username = ?", (self.username,))
+        bookingIds = self.cur.fetchall()
+        if not bookingIds:
+            return ["No bookings available"]
+        else:
+            array = []
+            for row in bookingIds:
+                array.append(row[0])
+            return array
 
     def doBackToLogIn(self):
         self.app.hideSubWindow("window_ForgotPassword")  # hides the Forgot Password Sub-window
@@ -460,6 +473,8 @@ class BookingSoftware:
     def doViewBookings(self):
         self.app.hideSubWindow("window_MainMenu")  # hides the Main Menu Sub-window
         self.app.showSubWindow("window_ViewBooking")  # shows the Cancel Booking Sub-window
+        bookingIds = self.retrieveBookingId()
+        self.app.changeOptionBox("Select a Booking ID :", bookingIds)
 
     def doMainMenuLogOut(self):
         LogOutConfirmation = self.app.questionBox("Main Menu", "Are you sure you want to Log out?")  # stores the result of a question box in the variable
@@ -467,7 +482,7 @@ class BookingSoftware:
             self.app.hideSubWindow("window_MainMenu")  # hides the Main Menu Sub-window
             self.app.show()  # shows the Main log in page
 
-    def doPitchSelectionToMainMenu(self, name):
+    def doPitchSelectionToMainMenu(self):
         self.app.hideSubWindow("window_PitchSizeSelection")  # hides the Pitch Size Selection Sub-window
         self.app.showSubWindow("window_MainMenu")  # shows the Main Menu page
 
@@ -488,7 +503,15 @@ class BookingSoftware:
     def doGetBookingInfo(self):
         selectedBookingID = self.app.getOptionBox(
             "Select a Booking ID :")  # Retrieves the users selection from the option box and stores it in selectedBookingID
-        self.app.infoBox("View Booking", "Here is the booking information")  # displays a pop-up box
+        self.cur.execute("Select * FROM tbl_bookings WHERE BookingId = ?", (selectedBookingID,))
+        bookingInfo = self.cur.fetchone()
+        self.app.infoBox("View Booking",
+                         "Here is the booking information: "
+                         "\n BookingID: " + bookingInfo[0] +
+                         "\n Pitch Number: " + str(bookingInfo[1]) +
+                         "\n Date: " + bookingInfo[2] +
+                         "\n Time: " + bookingInfo[3] +
+                         "\n Price: £" + str(bookingInfo[4])+"0")  # displays a pop-up box
 
     def doCancelBooking(self):
         cancelBookingConfirmation = self.app.questionBox("Cancel Booking",
@@ -514,9 +537,9 @@ class BookingSoftware:
                 self.app.infoBox("Booking", "Booking Successful!")  # displays a pop-up box
                 self.app.hideSubWindow("window_Booking")  # hides the Booking Sub-window
                 self.app.showSubWindow("window_BookingSummary")  # shows the BookingSummary page
+                self.enablePitches()  # enables the button widget
             else:
                 self.app.infoBox("Booking", "There is already a booking at this date and time")  # tells the user that there is already a booking at this time
-        self.enablePitches()  # enables the button widget
 
     def doBookingSummaryToMainMenu(self):
         self.app.hideSubWindow("window_BookingSummary")  # hides the BookingSummary Sub-window
@@ -549,6 +572,7 @@ class BookingSoftware:
         if validateLogin:
             self.app.hide()  # Hides the Main Log in page
             self.app.showSubWindow("window_MainMenu")  # shows the Main Menu Sub-window
+            self.retrieveBookingId()
         self.app.clearEntry("UsernameCheck")  # clears the contents of the entry box with the label UsernameCheck
         self.app.clearEntry("PasswordCheck")  # clears the contents of the entry box with the label PasswordCheck
 
