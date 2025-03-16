@@ -19,9 +19,6 @@ def times(time):
 
 class BookingSoftware:
     def __init__(self):
-        self.bookingIds = None
-        self.retrievedBookingId = None
-        self.pitchSize = None
         self.username = None
         self.pitchNum = None
         self.pitchPrice = None
@@ -141,7 +138,7 @@ class BookingSoftware:
         self.app.addLabel("lb_CancelBooking", "Cancel Booking")
         self.app.addButton("CancelBookingToMainMenu", self.doCancelBookingToMainMenu, 9, 2)
         self.app.setButton("CancelBookingToMainMenu", "Main Menu")
-        self.app.addLabelOptionBox("Select booking you'd like to cancel :", ["100", "101", "102", "103"], 3, 2)
+        self.app.addLabelOptionBox("Select booking you'd like to cancel :", [""], 3, 2)
         self.app.addButton("CancelBooking", self.doCancelBooking, 6, 2)
         self.app.setButton("CancelBooking", "Cancel Booking")
         self.app.stopSubWindow()
@@ -440,23 +437,37 @@ class BookingSoftware:
         createBookingId = "B" + str(bookingNum)  # concatenated the letter B with the bookingNum
         self.cur.execute("SELECT BookingID FROM tbl_bookings WHERE BookingID = ?", (createBookingId,))  # checks if the bookingID entered is in the database
         existingBookingID = self.cur.fetchone()
-        while existingBookingID is not None and existingBookingID[0] is not None:
-            bookingNum += 1
+        while existingBookingID is not None and existingBookingID[0] is not None:  # checks if the existingBookingID exists within the database
+            bookingNum += 1  # increments the bookingNum
             createBookingId = "B" + str(bookingNum)
             self.cur.execute("SELECT BookingID FROM tbl_bookings WHERE BookingID = ?", (createBookingId,))  # checks if the bookingID entered is in the database
             existingBookingID = self.cur.fetchone()
         return createBookingId
 
     def retrieveBookingId(self):
-        self.cur.execute("SELECT BookingID FROM tbl_bookings WHERE username = ?", (self.username,))
+        self.cur.execute("SELECT BookingID FROM tbl_bookings WHERE username = ?",
+                         (self.username,))  # selects the bookingID from the table bookings variable where the username is equal to the users username
         bookingIds = self.cur.fetchall()
-        if not bookingIds:
-            return ["No bookings available"]
+        if not bookingIds:  # checks if the bookingIds variable is empty
+            return ["No bookings"]
         else:
             array = []
-            for row in bookingIds:
-                array.append(row[0])
-            return array
+            for row in bookingIds:  # goes through every row in the bookingIds variable
+                array.append(row[0])  # appends each value into the array
+            return array  # returns the array
+
+    def retrieveFutureBookingId(self):
+        today = datetime.now().strftime("%Y-%m-%d")  # Gets today's date in YYYY-MM-DD format
+        self.cur.execute("SELECT BookingID FROM tbl_bookings WHERE username = ? AND Date <= ?",
+                         (self.username, today,))  # selects the bookingID from the table bookings variable where the username is equal to the users username
+        bookingIds = self.cur.fetchall()
+        if not bookingIds:  # checks if the bookingIds variable is empty
+            return ["No bookings"]
+        else:
+            array = []
+            for row in bookingIds:  # goes through every row in the bookingIds variable
+                array.append(row[0])  # appends each value into the array
+            return array  # returns the array
 
     def doBackToLogIn(self):
         self.app.hideSubWindow("window_ForgotPassword")  # hides the Forgot Password Sub-window
@@ -466,9 +477,26 @@ class BookingSoftware:
         self.app.hideSubWindow("window_MainMenu")  # hides the Main Menu Sub-window
         self.app.showSubWindow("window_PitchSizeSelection")  # shows the Pitch Size Selection Sub-window
 
+    def doCancelBooking(self):
+        selectedBookingID = self.app.getOptionBox("Select booking you'd like to cancel :")  # gets the users selected bookingID
+        if selectedBookingID == "No bookings":  # checks if the user has no bookings
+            self.app.infoBox("Cancel Booking", "You have no bookings at the moment")
+        else:
+            cancelBookingConfirmation = self.app.questionBox("Cancel Booking",
+                                                             "Are you sure you want to Cancel the Booking?")  # stores the result of a question box in the variable
+            if cancelBookingConfirmation:  # checks if the result was true
+                self.cur.execute("DELETE FROM tbl_bookings WHERE BookingID = ?",
+                                 (selectedBookingID,))  # deletes the booking with the bookingID the user has selectes
+                self.con.commit()
+                self.app.infoBox("Cancel Booking", "Your Booking has been canceled!")  # displays a pop-up box that says the account has been created
+                updatedBookingIds = self.retrieveFutureBookingId()
+                self.app.changeOptionBox("Select booking you'd like to cancel :", updatedBookingIds)
+
     def doCancelABooking(self):
         self.app.hideSubWindow("window_MainMenu")  # hides the Main Menu Sub-window
         self.app.showSubWindow("window_CancelBooking")  # shows the Cancel Booking Sub-window
+        bookingIds = self.retrieveFutureBookingId()
+        self.app.changeOptionBox("Select booking you'd like to cancel :", bookingIds)
 
     def doViewBookings(self):
         self.app.hideSubWindow("window_MainMenu")  # hides the Main Menu Sub-window
@@ -505,19 +533,16 @@ class BookingSoftware:
             "Select a Booking ID :")  # Retrieves the users selection from the option box and stores it in selectedBookingID
         self.cur.execute("Select * FROM tbl_bookings WHERE BookingId = ?", (selectedBookingID,))
         bookingInfo = self.cur.fetchone()
-        self.app.infoBox("View Booking",
-                         "Here is the booking information: "
-                         "\n BookingID: " + bookingInfo[0] +
-                         "\n Pitch Number: " + str(bookingInfo[1]) +
-                         "\n Date: " + bookingInfo[2] +
-                         "\n Time: " + bookingInfo[3] +
-                         "\n Price: £" + str(bookingInfo[4])+"0")  # displays a pop-up box
-
-    def doCancelBooking(self):
-        cancelBookingConfirmation = self.app.questionBox("Cancel Booking",
-                                                         "Are you sure you want to Cancel the Booking?")  # stores the result of a question box in the variable
-        if cancelBookingConfirmation:  # checks if the result was true
-            self.app.infoBox("Cancel Booking", "Your Booking has been canceled!")  # displays a pop-up box that says the account has been created
+        if selectedBookingID == "No bookings":  # checks if the Option Box has no BookingIds in it
+            self.app.infoBox("View Booking", "You have no bookings at the moment")  # tells the user there is no information to give them
+        else:
+            self.app.infoBox("View Booking",
+                             "Here is the booking information: "
+                             "\n BookingID: " + bookingInfo[0] +  # displays the first index of the bookingInfo variable next to the text BookingID:
+                             "\n Pitch Number: " + str(bookingInfo[1]) +  # displays the first index of the bookingInfo variable next to the text BookingID:
+                             "\n Date: " + bookingInfo[2] +  # displays the first index of the bookingInfo variable next to the text BookingID:
+                             "\n Time: " + bookingInfo[3] +  # displays the first index of the bookingInfo variable next to the text BookingID:
+                             "\n Price: £" + str(bookingInfo[4]) + "0")  # displays the first index of the bookingInfo variable next to the text BookingID:
 
     def doCancelBookingToMainMenu(self):
         self.app.hideSubWindow("window_CancelBooking")  # hides the Cancel Booking Sub-window
