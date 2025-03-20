@@ -33,7 +33,7 @@ class BookingSoftware:
 
     def createInterface(self):
         # LOGIN PAGE: this is the initial starting page of the software,
-        #             where users will be able to log into their account,
+        #             where users will be able to log into their account to access the main menu,
         #             go to the create an account page or the forgot password page
         self.app.addLabel("lb_Login", "Log In Page")
         self.app.setSize("600x300")  # Sets the size of the window to 600x300
@@ -52,7 +52,8 @@ class BookingSoftware:
         self.app.addLabel("lb_requiredFields", "Required Fields: *", 9, 0)
 
         # CREATE AN ACCOUNT PAGE: this is the page where users will enter all the required
-        #                         information for them to create an account
+        #                         information for them to create an account which will then
+        #                         be added to the tbl_users table
         self.app.startSubWindow("window_CreateAnAccount")
         self.app.addLabel("lb_CreateAnAccount", "Create An Account")
         self.app.setSize("600x300")  # Sets the size of the window to 600x300
@@ -99,7 +100,8 @@ class BookingSoftware:
 
         # MAIN MENU PAGE: this is the page that will allow users to access the Book a pitch page,
         #                 the Cancel booking page and the View bookings page,
-        #                 they will also be able to log out of their account taking them back to the Log-in page
+        #                 they will also be able to log out of their account taking them back to the Log-in page,
+        #                 this page is acting as a linking page between all the other pages in my software.
         self.app.startSubWindow("window_MainMenu")
         self.app.setSize("600x300")
         self.app.setSticky("W")
@@ -115,7 +117,9 @@ class BookingSoftware:
         self.app.stopSubWindow()
 
         # PITCH SIZE SELECTION: this is the page that will start the booking process,
-        #                       by allowing users to select the pitch size that they want
+        #                       by allowing users to select the pitch size that they want,
+        #                       so that the correct buttons can be disabled depending on the
+        #                       pitch size selected
         self.app.startSubWindow("window_PitchSizeSelection")
         self.app.setSize("600x300")
         self.app.setSticky("W")
@@ -131,7 +135,7 @@ class BookingSoftware:
         self.app.stopSubWindow()
 
         # CANCEL BOOKING : this is the page that will allow users to cancel a booking that they have made
-        #                  if they wish to do so
+        #                  if they wish to do so, by selecting a bookingID from the labelOptionBox
         self.app.startSubWindow("window_CancelBooking")
         self.app.setSize("600x300")
         self.app.setSticky("W")
@@ -144,7 +148,8 @@ class BookingSoftware:
         self.app.stopSubWindow()
 
         # VIEW BOOKING: this is the page where users will be able to view all their previous and
-        #              upcoming bookings
+        #              upcoming bookings by selecting the bookingID from the labelOptionBox, to see
+        #              that bookings information in an info box
         self.app.startSubWindow("window_ViewBooking")
         self.app.setSize("600x300")
         self.app.setSticky("W")
@@ -157,7 +162,8 @@ class BookingSoftware:
         self.app.stopSubWindow()
 
         # Booking: this is the page where users will be able to put all the details of the pitch they want to book
-        #          as well as the date and time, allowing them to make a booking
+        #          as well as the date and time, allowing them to make a booking, they are then automatically
+        #          taken to the bookingSummary page
         todayDate = datetime.now()
         nextTwoWeeks = [dates((todayDate + timedelta(days=i)).strftime("%Y - %m - %d %H:%M:%S")) for i in range(14)]
         self.app.startSubWindow("window_Booking")
@@ -188,6 +194,7 @@ class BookingSoftware:
         self.app.stopSubWindow()
 
         # BOOKING SUMMARY: this is the page that will display all the booking information
+        #                  for the booking that the user has just made.
         self.app.startSubWindow("window_BookingSummary")
         self.app.setSize("600x300")
         self.app.setSticky("W")
@@ -275,6 +282,7 @@ class BookingSoftware:
         self.app.showSubWindow("window_CreateAnAccount")  # shows the Create An Account Sub-window
 
     def createAnAccountValidation(self):
+        # gets all the entry box entries storing all the entered values in a varibale
         firstnameEntered = self.app.getEntry("FirstnameEntry")
         surnameEntered = self.app.getEntry("SurnameEntry")
         usernameEntered = self.app.getEntry("UsernameEntry")
@@ -283,17 +291,20 @@ class BookingSoftware:
         phoneNumberEntered = self.app.getEntry("PhoneNumberEntry")
         memorableWordEntered = self.app.getEntry("MemorableWordEntry")
 
+        # checks if the entries are empty displaying an info box if any of them are empty
         if firstnameEntered == "" or surnameEntered == "" or usernameEntered == "" or passwordEntered == "" or repeatPasswordEntered == "" or memorableWordEntered == "":  # Checks if fields that are required are empty
             self.app.infoBox("Create An Account", "Ensure that all required fields are filled in")
             return False
         else:
+            # runs the validation function passing in every entry to the  function
             correctFields = self.checkCreateAccountFields(usernameEntered, passwordEntered, repeatPasswordEntered, firstnameEntered, surnameEntered,
                                                           phoneNumberEntered)
+            # checks if the users entries are correct against my syntax
             if correctFields:
-                userId = self.userId()
+                userId = self.userId()  # generates a userID storing it in the userId variable
                 self.cur.execute("INSERT INTO tbl_users VALUES (?, ?, ?, ?, ?, ?, ?)",
                                  (userId, usernameEntered, firstnameEntered, surnameEntered, passwordEntered, phoneNumberEntered,
-                                  memorableWordEntered))
+                                  memorableWordEntered))  # inserts the users entries into the database
                 self.con.commit()
                 return True
             else:
@@ -321,16 +332,16 @@ class BookingSoftware:
             self.app.infoBox("Create An Account", "Passwords must be between 8 and 24 inclusive, have at least 2 integers and at least 1 capital letter")
             return False
 
-        if passwordEntered != repeatPasswordEntered:
+        if passwordEntered != repeatPasswordEntered:  # checks if the entered password is the same as the repeat password entered
             self.app.infoBox("Create An Account", "Repeat password and Password do not match")
             return False
 
-        if not firstnameEntered.isalpha() or not surnameEntered.isalpha():
+        if not firstnameEntered.isalpha() or not surnameEntered.isalpha():  # checks if the firstname and surname entered only contain letters
             self.app.infoBox("Create An Account", "Username and Surname must only contain letters")
             return False
 
-        if phoneNumberEntered != "":
-            if len(phoneNumberEntered) != 11 or phoneNumberEntered[:2] != "07":
+        if phoneNumberEntered != "":  # checks if the phone number field is not empty
+            if len(phoneNumberEntered) != 11 or phoneNumberEntered[:2] != "07":  # checks of the phone number is 11 digits long and starts with 06
                 self.app.infoBox("Create An Account", "Phone numbers should be 11 digits long and start with 07")
                 return False
         return True
