@@ -505,7 +505,7 @@ class BookingSoftware:
         if not bookingIds:  # checks if the bookingIds variable is empty
             return ["No bookings"]
         else:
-            array = []
+            array = [] # sets the array variable to a blank array
             for row in bookingIds:  # goes through every row in the bookingIds variable
                 array.append(row[0])  # appends each value into the array
             return array  # returns the array
